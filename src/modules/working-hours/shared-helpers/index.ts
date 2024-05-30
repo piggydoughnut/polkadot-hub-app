@@ -1,11 +1,16 @@
 import dayjs, { Dayjs } from 'dayjs'
+import dayjsIsoWeek from 'dayjs/plugin/isoWeek'
 import {
   GenericWorkingHoursEntry,
+  PublicHoliday,
   TimeOffRequest,
   TimeOffRequestUnit,
   WorkingHoursConfig,
+  WorkingHoursEntry,
 } from '#shared/types'
 import * as fp from '#shared/utils'
+
+dayjs.extend(dayjsIsoWeek)
 
 // @todo implement #shared/constants and use `DATE_FORMAT`
 const DATE_FORMAT = 'YYYY-MM-DD'
@@ -75,15 +80,18 @@ export function calculateOverwork(
 }
 
 export function sumTime(
-  t1: [number, number] | null,
-  t2: [number, number] | null
+  ...args: ([number, number] | null)[]
 ): [number, number] | null {
-  const [h1, m1] = t1 || [0, 0]
-  const [h2, m2] = t2 || [0, 0]
-  const hours = h1 + h2 + Math.floor((m1 + m2) / 60)
-  const minutes = (m1 + m2) % 60
-  if (!hours && !minutes) return null
-  return [hours, minutes]
+  return args.reduce((acc, x) => {
+    const t1 = acc || [0, 0]
+    const t2 = x || [0, 0]
+    const [h1, m1] = t1 || [0, 0]
+    const [h2, m2] = t2 || [0, 0]
+    const hours = h1 + h2 + Math.floor((m1 + m2) / 60)
+    const minutes = (m1 + m2) % 60
+    if (!hours && !minutes) return null
+    return [hours, minutes]
+  }, null)
 }
 
 export function getEditablePeriod(
@@ -147,6 +155,21 @@ export function calculateTotalTimeOffTime(
     : null
 }
 
+export function calculateTotalPublicHolidaysTime(
+  holidays: PublicHoliday[],
+  config: WorkingHoursConfig | null
+): [number, number] | null {
+  if (!config || !holidays.length) {
+    return null
+  }
+  const hoursPerDay = config.weeklyWorkingHours / config.workingDays.length
+  const resultHours = holidays.length * hoursPerDay
+  const resultMinutes = (resultHours % 1) * 60
+  return !!resultHours
+    ? [Math.floor(resultHours), Math.floor(resultMinutes)]
+    : null
+}
+
 export function calculateAverageWorkingTimeByDays(
   days: number,
   config: WorkingHoursConfig
@@ -167,21 +190,19 @@ export function getIntervalDates(from: Dayjs, to: Dayjs): string[] {
 export function getIntervalWeeks(
   from: Dayjs,
   to: Dayjs
-): Array<{ index: number; start: Dayjs; end: Dayjs }> {
+): Array<{ index: string; start: Dayjs; end: Dayjs }> {
   if (to <= from) return []
-  let i = from.isoWeek()
-  const result: Array<{ index: number; start: Dayjs; end: Dayjs }> = []
-  while (i <= to.isoWeek()) {
-    const start = dayjs().startOf('isoWeek').isoWeek(i)
-    const end = dayjs().endOf('isoWeek').isoWeek(i)
-    result.push({
-      index: i,
-      start,
-      end,
+  const diff = to.diff(from, 'week') + 1
+  return Array(diff)
+    .fill(null)
+    .map((x, i) => {
+      const start = from.startOf('isoWeek').add(i, 'week')
+      return {
+        index: start.format(DATE_FORMAT),
+        start,
+        end: start.endOf('isoWeek'),
+      }
     })
-    i++
-  }
-  return result
 }
 
 export type TimeOff = { unit: TimeOffRequestUnit; value: number }
@@ -212,4 +233,23 @@ export function getTimeOffNotation(timeOff: TimeOff): string {
     return `¼ day off`
   }
   return `${timeOff.value} day off`
+}
+
+export function getDateRangeEdges(_dates: string[]): [string, string] | null {
+  const dates = Array.from(new Set(_dates)).sort()
+  if (!dates.length) return null
+  return [dates[0], fp.last(dates)]
+}
+
+export function getWeekIndexesRange(dates: string[]): string[] {
+  const range = getDateRangeEdges(dates)
+  if (!range) return []
+  const start = dayjs(range[0], DATE_FORMAT)
+  const end = dayjs(fp.last(range), DATE_FORMAT)
+  const diff = end.diff(start, 'week') + 1
+  return Array(diff)
+    .fill(null)
+    .map((x, i) => {
+      return end.startOf('isoWeek').subtract(i, 'week').format(DATE_FORMAT)
+    })
 }

@@ -27,6 +27,7 @@ export const layout = z.object({
         z.array(componentRef).length(2),
       ])
     ),
+    sidebarRight: z.array(componentRef).optional(),
   }),
 })
 
@@ -42,11 +43,6 @@ export const officeVisitsConfig = z.object({
   workingDays: z.array(z.number().min(0).max(6)).min(1).max(7),
   bookableDays: z.number().min(1),
   maxCapacity: z.number().min(1),
-  capacityThresholds: z.object({
-    low: z.number().min(1),
-    medium: z.number().min(1),
-    high: z.number().min(1),
-  }),
 })
 
 export const officeAreaDesk = z
@@ -144,7 +140,7 @@ export const office = z
       if (!areasParsed.success) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Property 'allowDeskReservation' is set but 'areas' is missing`,
+          message: areasParsed.error.issues[0].code,
         })
       }
     }
@@ -210,6 +206,7 @@ export const userRoleGroup = z.object({
     })
     .default({ max: undefined, unique: false }),
   roles: z.array(userRole).min(1),
+  description: z.string().optional(),
 })
 
 export const permissionsConfig = z.object({
@@ -219,6 +216,10 @@ export const permissionsConfig = z.object({
     .and(z.object({ __default: z.string() })),
 })
 
+export const cronJobRef = z
+  .tuple([z.string()])
+  .or(z.tuple([z.string(), z.string()]))
+
 export const moduleConfig = z
   .object({
     id: z.string(),
@@ -226,9 +227,7 @@ export const moduleConfig = z
     enabledIntegrations: z.array(z.string()).default([]),
     metadata: z.record(z.any()).optional(),
     portals: z.record(z.array(componentRef)).default({}),
-    enabledCronJobs: z
-      .array(z.tuple([z.string(), z.string().or(z.null())]))
-      .default([]),
+    enabledCronJobs: z.array(cronJobRef).default([]),
   })
   .strict()
 

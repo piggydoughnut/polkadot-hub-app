@@ -2,7 +2,7 @@
 
 1.  `git clone git@github.com:paritytech/parity-portal-hq.git && cd parity-portal-hq`
 
-2.  Run the following command, which will run the docker compose configuration from the `docker-compose-demo.yml` file, which uses `ghcr.io/piggydoughnut/hqapp:latest` image. This runs a demo app with preset configuration.
+2.  Run the following command, which will run the docker compose configuration from the `docker-compose-demo.yml` file, which uses `paritytech/polkadot-hub-app/hqapp:latest` image. This runs a demo app with preset configuration.
 
     ```
      DATABASE_URI=postgresql://test:test@postgres/test \
@@ -18,7 +18,7 @@
 
 ## 1. Prerequisites
 
-The quickest and easiest way to run HQ is using Docker. You can find Docker installation instructions [here](https://docs.docker.com/get-docker/).
+The quickest and easiest way to run Polkadot Hub App is using Docker. You can find Docker installation instructions [here](https://docs.docker.com/get-docker/).
 
 If you don't want to use Docker you can run the project from source.
 
@@ -112,3 +112,9 @@ To use the current source code instead of the published image, use `docker-compo
         docker push ghcr.io/username/containername:latest
 
         docker push ghcr.io/username/containername:v-[VERSION_NUMBER]
+
+## Common Issues
+
+`SequelizeConnectionRefusedError: connect ECONNREFUSED 127.0.0.1:5432`
+
+Make sure your `.env` file as a correct `DATABASE_URI` path. The variables in the `.env` file prevail over manually specified env vars in the terminal.
